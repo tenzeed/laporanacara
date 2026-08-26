@@ -10,8 +10,20 @@ export default function EventCard({ event }: { event: Event }) {
       className="group block rounded-xl2 border border-ink/10 bg-white/60 p-5 shadow-card transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-pop"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-lg font-semibold leading-snug text-ink">
+        <h3 className="flex items-start gap-1.5 font-display text-lg font-semibold leading-snug text-ink">
           {event.nama_acara}
+          {event.has_pin && (
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 13 13"
+              fill="none"
+              className="mt-1.5 shrink-0 text-ink-soft/50"
+            >
+              <rect x="2.5" y="6" width="8" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M4.5 6V4.2a2 2 0 014 0V6" stroke="currentColor" strokeWidth="1.1" />
+            </svg>
+          )}
         </h3>
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium tracking-wide ${

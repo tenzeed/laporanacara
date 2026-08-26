@@ -1,116 +1,45 @@
 -- =========================================================
--- LPJ Acara — Skema Database Supabase (PostgreSQL)
--- Jalankan seluruh file ini di: Supabase Dashboard -> SQL Editor -> New query
+-- Migrasi v2: PIN per acara + hapus acara
 --
--- Kalau project Supabase kamu SUDAH pernah menjalankan versi schema
--- sebelumnya (tanpa PIN), JANGAN jalankan file ini lagi — cukup jalankan
--- supabase/migration_v2_pin_dan_hapus.sql sekali saja.
+-- Jalankan file ini SEKALI di Supabase Dashboard -> SQL Editor, HANYA
+-- kalau project kamu sudah pernah menjalankan schema.sql versi lama
+-- (tanpa PIN). Aman dijalankan berkali-kali (idempotent).
+--
+-- Setelah ini jalan, update juga kode aplikasi ke versi terbaru
+-- (lib/queries.ts dkk) — keduanya harus sinkron.
 -- =========================================================
 
 create extension if not exists "pgcrypto";
 
--- ---------------------------------------------------------
--- Tabel: events (acara)
--- pin_hash disimpan ter-enkripsi (bcrypt) dan TIDAK PERNAH dikirim ke
--- browser — semua pengecekan PIN terjadi di dalam database lewat fungsi
--- di bawah. has_pin adalah kolom biasa supaya aplikasi tahu apakah suatu
--- acara sudah dilindungi PIN atau belum, tanpa perlu membaca pin_hash.
--- ---------------------------------------------------------
-create table if not exists events (
-  id uuid primary key default gen_random_uuid(),
-  nama_acara text not null,
-  tanggal_mulai date not null,
-  tanggal_selesai date not null,
-  deskripsi text,
-  status text not null default 'berlangsung' check (status in ('berlangsung', 'selesai')),
-  pin_hash text,
-  has_pin boolean not null default false,
-  created_at timestamptz not null default now()
-);
+-- Tambah kolom PIN ke tabel events yang sudah ada
+alter table events add column if not exists pin_hash text;
+alter table events add column if not exists has_pin boolean not null default false;
 
 -- ---------------------------------------------------------
--- Tabel: categories (kategori transaksi, termasuk custom)
+-- Perketat akses: hanya baca yang dibuka luas, semua tulis lewat fungsi
 -- ---------------------------------------------------------
-create table if not exists categories (
-  id uuid primary key default gen_random_uuid(),
-  nama_kategori text not null,
-  jenis text not null check (jenis in ('pemasukan', 'pengeluaran')),
-  is_default boolean not null default false,
-  created_at timestamptz not null default now(),
-  unique (nama_kategori, jenis)
-);
-
--- ---------------------------------------------------------
--- Tabel: transactions (transaksi per acara)
--- ---------------------------------------------------------
-create table if not exists transactions (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references events (id) on delete cascade,
-  jenis text not null check (jenis in ('pemasukan', 'pengeluaran')),
-  kategori text not null,
-  nominal numeric(14, 2) not null check (nominal >= 0),
-  tanggal date not null,
-  keterangan text,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_transactions_event_id on transactions (event_id);
-create index if not exists idx_transactions_tanggal on transactions (tanggal);
-
--- ---------------------------------------------------------
--- Kategori default (sesuai PRD)
--- ---------------------------------------------------------
-insert into categories (nama_kategori, jenis, is_default) values
-  ('Proposal', 'pemasukan', true),
-  ('Sumbangan Masyarakat', 'pemasukan', true),
-  ('Donatur', 'pemasukan', true),
-  ('Transport', 'pengeluaran', true),
-  ('Konsumsi', 'pengeluaran', true),
-  ('Logistik', 'pengeluaran', true),
-  ('Lain-lain', 'pengeluaran', true)
-on conflict (nama_kategori, jenis) do nothing;
-
--- ---------------------------------------------------------
--- Row Level Security
---
--- Model akses aplikasi ini:
---  - SEMUA ORANG dengan link bisa MELIHAT acara, ringkasan, dan riwayat
---    transaksi (mode "hanya lihat" / draft laporan) — tanpa PIN.
---  - MENGUBAH data (tambah/edit/hapus transaksi, ubah status, hapus
---    acara, tambah kategori) HARUS lewat fungsi ber-PIN di bawah.
---    Karena itu hak INSERT/UPDATE/DELETE langsung ke tabel dicabut dari
---    anon/authenticated — satu-satunya jalan menulis data adalah lewat
---    fungsi-fungsi yang memverifikasi PIN terlebih dahulu.
---  - Kolom pin_hash disembunyikan total lewat pembatasan hak akses per
---    kolom, supaya tidak bisa "diintip" lewat network tab browser.
--- ---------------------------------------------------------
-alter table events enable row level security;
-alter table categories enable row level security;
-alter table transactions enable row level security;
-
 drop policy if exists "public_all_events" on events;
+drop policy if exists "public_read_events" on events;
 create policy "public_read_events" on events for select using (true);
 
 drop policy if exists "public_all_categories" on categories;
+drop policy if exists "public_read_categories" on categories;
 create policy "public_read_categories" on categories for select using (true);
 
 drop policy if exists "public_all_transactions" on transactions;
+drop policy if exists "public_read_transactions" on transactions;
 create policy "public_read_transactions" on transactions for select using (true);
 
--- Cabut semua hak tulis langsung; hanya baca yang dibuka luas.
 revoke insert, update, delete on events from anon, authenticated;
 revoke insert, update, delete on categories from anon, authenticated;
 revoke insert, update, delete on transactions from anon, authenticated;
 
--- Sembunyikan pin_hash: anon/authenticated hanya boleh SELECT kolom berikut.
 revoke select on events from anon, authenticated;
 grant select (id, nama_acara, tanggal_mulai, tanggal_selesai, deskripsi, status, has_pin, created_at)
   on events to anon, authenticated;
 
 -- ---------------------------------------------------------
--- Fungsi: verifikasi PIN suatu acara
--- Acara tanpa PIN (has_pin = false, mis. dibuat sebelum fitur ini ada)
--- dianggap terbuka: verifikasi otomatis lolos.
+-- Fungsi-fungsi ber-PIN (sama seperti di schema.sql)
 -- ---------------------------------------------------------
 create or replace function verify_event_pin(p_event_id uuid, p_pin text)
 returns boolean
@@ -134,9 +63,6 @@ end;
 $$;
 grant execute on function verify_event_pin(uuid, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: buat acara baru dengan PIN
--- ---------------------------------------------------------
 create or replace function create_event_with_pin(
   p_nama_acara text,
   p_tanggal_mulai date,
@@ -171,11 +97,6 @@ end;
 $$;
 grant execute on function create_event_with_pin(text, date, date, text, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: pasang PIN untuk acara lama yang belum punya PIN
--- (menolak jika acara sudah punya PIN — mencegah pengambilalihan tanpa
--- tahu PIN lama, karena MVP ini belum punya fitur ganti/reset PIN).
--- ---------------------------------------------------------
 create or replace function set_event_pin_if_missing(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
@@ -198,9 +119,6 @@ end;
 $$;
 grant execute on function set_event_pin_if_missing(uuid, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: ubah status acara (berlangsung/selesai) dengan PIN
--- ---------------------------------------------------------
 create or replace function update_event_status_with_pin(p_event_id uuid, p_pin text, p_status text)
 returns boolean
 language plpgsql
@@ -220,11 +138,6 @@ end;
 $$;
 grant execute on function update_event_status_with_pin(uuid, text, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: hapus acara beserta seluruh transaksinya (dengan PIN)
--- Dipakai untuk membersihkan acara lama yang LPJ-nya sudah tidak
--- dibutuhkan lagi, supaya kuota database gratis tidak penuh.
--- ---------------------------------------------------------
 create or replace function delete_event_with_pin(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
@@ -241,9 +154,6 @@ end;
 $$;
 grant execute on function delete_event_with_pin(uuid, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: tambah transaksi (dengan PIN)
--- ---------------------------------------------------------
 create or replace function add_transaction_with_pin(
   p_event_id uuid, p_pin text, p_jenis text, p_kategori text,
   p_nominal numeric, p_tanggal date, p_keterangan text
@@ -272,9 +182,6 @@ end;
 $$;
 grant execute on function add_transaction_with_pin(uuid, text, text, text, numeric, date, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: ubah transaksi (dengan PIN)
--- ---------------------------------------------------------
 create or replace function update_transaction_with_pin(
   p_transaction_id uuid, p_pin text, p_jenis text, p_kategori text,
   p_nominal numeric, p_tanggal date, p_keterangan text
@@ -308,9 +215,6 @@ end;
 $$;
 grant execute on function update_transaction_with_pin(uuid, text, text, text, numeric, date, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: hapus transaksi (dengan PIN)
--- ---------------------------------------------------------
 create or replace function delete_transaction_with_pin(p_transaction_id uuid, p_pin text)
 returns boolean
 language plpgsql
@@ -333,10 +237,6 @@ end;
 $$;
 grant execute on function delete_transaction_with_pin(uuid, text) to anon, authenticated;
 
--- ---------------------------------------------------------
--- Fungsi: tambah kategori custom (dengan PIN, terikat ke satu acara
--- sebagai bukti otorisasi — kategorinya sendiri tetap dipakai bersama)
--- ---------------------------------------------------------
 create or replace function add_category_with_pin(
   p_event_id uuid, p_pin text, p_nama_kategori text, p_jenis text
 ) returns table (id uuid, nama_kategori text, jenis text, is_default boolean, created_at timestamptz)
@@ -361,3 +261,7 @@ begin
 end;
 $$;
 grant execute on function add_category_with_pin(uuid, text, text, text) to anon, authenticated;
+
+-- Selesai. Acara yang sudah ada sebelumnya otomatis has_pin = false
+-- (tetap terbuka seperti biasa) sampai kamu klik "Atur PIN sekarang"
+-- di halaman acara tersebut.

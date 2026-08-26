@@ -8,6 +8,7 @@ export interface Event {
   tanggal_selesai: string;
   deskripsi: string | null;
   status: EventStatus;
+  has_pin: boolean;
   created_at: string;
 }
 

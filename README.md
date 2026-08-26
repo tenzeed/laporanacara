@@ -8,14 +8,22 @@ Supabase (Postgres) + Tailwind CSS + @react-pdf/renderer**, siap deploy ke **Ver
 
 ## 1. Siapkan Supabase
 
+**Project baru (belum pernah setup sebelumnya):**
+
 1. Buat project baru di [supabase.com](https://supabase.com) (gratis).
 2. Buka **SQL Editor** → **New query**, tempel seluruh isi file `supabase/schema.sql`
-   dari project ini, lalu **Run**. Ini akan membuat tabel `events`, `categories`,
-   `transactions`, mengisi kategori default, dan mengatur akses (lihat catatan
-   keamanan di bawah).
+   dari project ini, lalu **Run**. Ini membuat tabel `events`, `categories`,
+   `transactions`, mengisi kategori default, dan mengatur akses termasuk
+   perlindungan PIN per acara (lihat bagian 5 di bawah).
 3. Buka **Project Settings → API**, salin:
    - `Project URL` → jadi `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → jadi `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+**Sudah pernah setup dengan versi lama (tanpa PIN)?** Jangan jalankan
+`schema.sql` lagi — cukup jalankan **`supabase/migration_v2_pin_dan_hapus.sql`**
+sekali di SQL Editor. Ini menambahkan fitur PIN & hapus acara tanpa
+mengubah data yang sudah ada. Acara-acara lama otomatis tetap terbuka
+(tanpa PIN) sampai kamu klik "Atur PIN sekarang" di halaman acara itu.
 
 ## 2. Konfigurasi lokal
 
@@ -65,28 +73,62 @@ jobs:
 Tambahkan `SUPABASE_URL` dan `SUPABASE_ANON_KEY` sebagai **Repository Secrets**
 di GitHub (Settings → Secrets and variables → Actions).
 
-## 5. Catatan keamanan (penting)
+## 5. PIN per acara & mode hanya-lihat
 
-Sesuai kebutuhan di PRD ("tanpa proses login yang ribet"), aplikasi ini **tidak
-memakai login** — siapa pun yang membuka link bisa langsung mencatat transaksi.
-Konsekuensinya, Row Level Security di Supabase dibuka publik lewat *anon key*
-(lihat `supabase/schema.sql`). Ini cocok untuk pemakaian internal/tertutup
-(link hanya dibagikan ke panitia). **Jangan sebarkan URL aplikasi secara
-publik** kalau tidak ingin orang asing bisa mengubah data. Jika ke depannya
-butuh proteksi lebih (multi-user dengan role, approval berjenjang), tambahkan
-Supabase Auth — ini memang sudah masuk daftar "Out of Scope" versi awal di PRD.
+Setiap acara punya PIN sendiri (4–6 digit), diatur saat acara dibuat:
+
+- **Siapa pun dengan link bisa MELIHAT** acara: ringkasan saldo dan riwayat
+  transaksi (mode "hanya lihat" / draft laporan) — tanpa perlu PIN.
+- **Menambah, mengubah, atau menghapus transaksi** — juga mengubah status
+  acara dan menghapus acara — **wajib tahu PIN acara itu**. Klik "Masuk
+  sebagai bendahara" di halaman acara, masukkan PIN, dan mode edit terbuka
+  di browser itu.
+- Setelah PIN benar dimasukkan sekali, browser itu **mengingat PIN-nya**
+  (tersimpan di localStorage) supaya bendahara tidak perlu input ulang
+  setiap kali mau catat transaksi. Klik "Kunci lagi" untuk keluar dari mode
+  edit di device itu.
+- PIN di-hash (bcrypt) di database dan **tidak pernah dikirim ke browser**
+  dalam bentuk apa pun — pengecekan PIN terjadi lewat fungsi database
+  (`verify_event_pin`, dst.), bukan dibandingkan di JavaScript. Semua
+  perintah tulis (insert/update/delete) ke tabel `events`/`transactions`/
+  `categories` dicabut haknya dari peran publik dan hanya bisa lewat
+  fungsi-fungsi ber-PIN ini — jadi PIN benar-benar menentukan siapa yang
+  bisa menulis, bukan sekadar menyembunyikan tombol di UI.
+
+**Batasan yang perlu disadari:** ini level proteksi yang wajar untuk
+kebutuhan "beda bendahara per acara, tanpa login ribet" — bukan pengganti
+sistem otentikasi penuh. PIN tersimpan sebagai teks biasa di localStorage
+browser bendahara (mirip PIN kasir sederhana); siapa pun yang punya akses
+fisik ke device & browser yang sama saat sudah dalam mode edit bisa
+mengubah data. Kalau ke depannya butuh proteksi setara akun/role
+sungguhan (multi-user dengan hak berbeda, approval berjenjang), itu perlu
+Supabase Auth — sudah masuk daftar "Out of Scope" versi awal di PRD.
+
+Karena tetap tanpa login, **jangan sebarkan URL aplikasi secara publik** —
+bagikan hanya ke panitia/anggota terkait.
+
+## 6. Menghapus acara (hemat kuota database gratis)
+
+Kalau LPJ suatu acara sudah di-download/print dan tidak dibutuhkan lagi,
+bendahara (setelah masuk mode edit) bisa klik **"Hapus acara ini"** di
+bagian "Zona berbahaya" pada halaman acara tersebut. Ini menghapus acara
+beserta seluruh transaksinya secara permanen dari Supabase — cocok
+dipakai berkala supaya database gratis (500 MB di free tier) tidak penuh
+oleh acara-acara lama yang sudah tidak relevan. Acara yang masih ingin
+disimpan sebagai arsip cukup dibiarkan saja, tidak perlu dihapus.
 
 ## 6. Struktur proyek
 
 ```
 app/
   page.tsx                     Daftar Acara (home)
-  acara/[id]/page.tsx          Detail acara: input transaksi, ringkasan, riwayat
-  acara/[id]/laporan/page.tsx  Laporan LPJ: preview, print, download PDF
+  acara/[id]/page.tsx          Detail acara: input transaksi, ringkasan, riwayat, PIN
+  acara/[id]/laporan/page.tsx  Laporan LPJ: preview, print, download PDF (selalu terbuka)
   layout.tsx, globals.css      Layout & tema global
-components/                    Komponen UI (modal, kartu, form, dokumen PDF)
-lib/                           Tipe data, koneksi Supabase, query, format, laporan
-supabase/schema.sql            Skema database siap-jalan
+components/                    Komponen UI (modal, kartu, form, dokumen PDF, PIN)
+lib/                           Tipe data, koneksi Supabase, query, format, laporan, pin-storage
+supabase/schema.sql                       Skema database siap-jalan (project baru)
+supabase/migration_v2_pin_dan_hapus.sql   Migrasi tambahan PIN & hapus acara (project lama)
 ```
 
 ## 7. Tahapan sesuai PRD

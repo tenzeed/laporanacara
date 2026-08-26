@@ -8,6 +8,7 @@ import SummaryCards from "@/components/SummaryCards";
 import TransactionList from "@/components/TransactionList";
 import TransactionModal from "@/components/TransactionModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import PinModal from "@/components/PinModal";
 import EmptyState from "@/components/EmptyState";
 import {
   fetchCategories,
@@ -15,7 +16,9 @@ import {
   fetchTransactions,
   updateEventStatus,
   deleteTransaction,
+  deleteEvent,
 } from "@/lib/queries";
+import { getSavedPin, savePin, clearSavedPin } from "@/lib/pin-storage";
 import { formatRentangTanggal } from "@/lib/format";
 import type { Category, Event, Transaction } from "@/lib/types";
 
@@ -27,11 +30,16 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [pin, setPin] = useState<string | null>(null);
+
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [toDelete, setToDelete] = useState<Transaction | null>(null);
+  const [showDeleteEvent, setShowDeleteEvent] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState<"unlock" | "set" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchEvent(eventId), fetchTransactions(eventId), fetchCategories()])
@@ -39,6 +47,10 @@ export default function EventDetailPage() {
         setEvent(ev);
         setTransactions(tx);
         setCategories(cats);
+        if (ev.has_pin) {
+          const saved = getSavedPin(ev.id);
+          if (saved) setPin(saved);
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -46,18 +58,25 @@ export default function EventDetailPage() {
       });
   }, [eventId]);
 
+  const unlocked = event ? !event.has_pin || pin !== null : false;
+  const effectivePin = pin ?? "";
+
   const totalPemasukan =
     transactions?.filter((t) => t.jenis === "pemasukan").reduce((a, b) => a + b.nominal, 0) ?? 0;
   const totalPengeluaran =
     transactions?.filter((t) => t.jenis === "pengeluaran").reduce((a, b) => a + b.nominal, 0) ?? 0;
 
   async function toggleStatus() {
-    if (!event) return;
+    if (!event || !unlocked) return;
     const next = event.status === "berlangsung" ? "selesai" : "berlangsung";
     setSavingStatus(true);
     try {
-      await updateEventStatus(event.id, next);
-      setEvent({ ...event, status: next });
+      const ok = await updateEventStatus(event.id, next, effectivePin);
+      if (ok) {
+        setEvent({ ...event, status: next });
+      } else {
+        alert("Gagal mengubah status. Coba buka mode edit ulang.");
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -75,13 +94,49 @@ export default function EventDetailPage() {
     setEditing(null);
   }
 
-  async function handleDelete(t: Transaction) {
+  async function handleDeleteTransaction(t: Transaction) {
     try {
-      await deleteTransaction(t.id);
+      await deleteTransaction(t.id, effectivePin);
       setTransactions((prev) => (prev ?? []).filter((x) => x.id !== t.id));
     } catch (err) {
       console.error(err);
+      alert("Gagal menghapus transaksi.");
     }
+  }
+
+  async function handleDeleteEvent() {
+    if (!event) return;
+    setDeletingEvent(true);
+    try {
+      const ok = await deleteEvent(event.id, effectivePin);
+      if (ok) {
+        clearSavedPin(event.id);
+        router.push("/");
+      } else {
+        alert("Gagal menghapus acara. Coba buka mode edit ulang.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal menghapus acara.");
+    } finally {
+      setDeletingEvent(false);
+    }
+  }
+
+  function handlePinSuccess(enteredPin: string) {
+    if (!event) return;
+    savePin(event.id, enteredPin);
+    setPin(enteredPin);
+    if (pinModalMode === "set") {
+      setEvent({ ...event, has_pin: true });
+    }
+    setPinModalMode(null);
+  }
+
+  function handleLock() {
+    if (!event) return;
+    clearSavedPin(event.id);
+    setPin(null);
   }
 
   if (error) {
@@ -134,18 +189,81 @@ export default function EventDetailPage() {
                 <p className="mt-2 max-w-md text-sm text-ink-soft/90">{event.deskripsi}</p>
               )}
             </div>
-            <button
-              onClick={toggleStatus}
-              disabled={savingStatus}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
-                event.status === "selesai"
-                  ? "bg-brand-50 text-brand-dark hover:bg-brand-50/70"
-                  : "bg-gold-50 text-gold hover:bg-gold-50/70"
+            {unlocked ? (
+              <button
+                onClick={toggleStatus}
+                disabled={savingStatus}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
+                  event.status === "selesai"
+                    ? "bg-brand-50 text-brand-dark hover:bg-brand-50/70"
+                    : "bg-gold-50 text-gold hover:bg-gold-50/70"
+                }`}
+                title="Klik untuk mengubah status"
+              >
+                {event.status === "selesai" ? "Selesai" : "Berlangsung"}
+              </button>
+            ) : (
+              <span
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
+                  event.status === "selesai"
+                    ? "bg-brand-50 text-brand-dark"
+                    : "bg-gold-50 text-gold"
+                }`}
+              >
+                {event.status === "selesai" ? "Selesai" : "Berlangsung"}
+              </span>
+            )}
+          </div>
+
+          {/* Mode indicator + unlock / lock / set-pin controls */}
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 bg-white/60 px-3.5 py-2.5">
+            <span
+              className={`flex items-center gap-1.5 text-xs font-medium ${
+                unlocked ? "text-brand-dark" : "text-ink-soft"
               }`}
-              title="Klik untuk mengubah status"
             >
-              {event.status === "selesai" ? "Selesai" : "Berlangsung"}
-            </button>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                {unlocked ? (
+                  <path
+                    d="M3 5.5V4a3 3 0 016 0M2.5 5.5h7a1 1 0 011 1V10a1 1 0 01-1 1h-7a1 1 0 01-1-1V6.5a1 1 0 011-1z"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                  />
+                ) : (
+                  <path
+                    d="M3 5.5V3.8a3 3 0 016 0V5.5M2.5 5.5h7a1 1 0 011 1V10a1 1 0 01-1 1h-7a1 1 0 01-1-1V6.5a1 1 0 011-1z"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                  />
+                )}
+              </svg>
+              {unlocked ? "Mode bendahara (bisa edit)" : "Mode hanya lihat"}
+            </span>
+            <span className="text-ink-soft/30">•</span>
+            {event.has_pin ? (
+              unlocked ? (
+                <button
+                  onClick={handleLock}
+                  className="text-xs font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                >
+                  Kunci lagi
+                </button>
+              ) : (
+                <button
+                  onClick={() => setPinModalMode("unlock")}
+                  className="text-xs font-medium text-brand underline-offset-2 hover:text-brand-dark hover:underline"
+                >
+                  Masuk sebagai bendahara
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => setPinModalMode("set")}
+                className="text-xs font-medium text-gold underline-offset-2 hover:underline"
+              >
+                Atur PIN sekarang
+              </button>
+            )}
           </div>
 
           <div className="mt-6">
@@ -153,15 +271,17 @@ export default function EventDetailPage() {
           </div>
 
           <div className="mt-3 flex flex-col gap-2.5 sm:flex-row">
-            <button
-              onClick={() => {
-                setEditing(null);
-                setShowForm(true);
-              }}
-              className="hidden flex-1 items-center justify-center gap-1.5 rounded-full bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark sm:flex"
-            >
-              <span className="text-base leading-none">+</span> Tambah transaksi
-            </button>
+            {unlocked && (
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setShowForm(true);
+                }}
+                className="hidden flex-1 items-center justify-center gap-1.5 rounded-full bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark sm:flex"
+              >
+                <span className="text-base leading-none">+</span> Tambah transaksi
+              </button>
+            )}
             <button
               onClick={() => router.push(`/acara/${eventId}/laporan`)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-ink/15 py-2.5 text-sm font-semibold text-ink transition hover:bg-ink/5"
@@ -182,6 +302,7 @@ export default function EventDetailPage() {
             ) : (
               <TransactionList
                 transactions={transactions}
+                readOnly={!unlocked}
                 onEdit={(t) => {
                   setEditing(t);
                   setShowForm(true);
@@ -191,23 +312,43 @@ export default function EventDetailPage() {
             )}
           </div>
 
-          {/* Mobile floating action button */}
-          <button
-            onClick={() => {
-              setEditing(null);
-              setShowForm(true);
-            }}
-            aria-label="Tambah transaksi"
-            className="fixed bottom-6 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-pop transition hover:bg-brand-dark sm:hidden"
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M11 4v14M4 11h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
+          {unlocked && (
+            <div className="mt-10 rounded-xl border border-dashed border-rust/25 bg-rust-50/40 p-4">
+              <p className="text-sm font-medium text-ink">Zona berbahaya</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                Sudah download atau print LPJ acara ini dan tidak dibutuhkan lagi? Kamu bisa
+                menghapusnya supaya tidak menumpuk di database. Transaksi di dalamnya ikut terhapus
+                permanen.
+              </p>
+              <button
+                onClick={() => setShowDeleteEvent(true)}
+                className="mt-3 rounded-full border border-rust/30 px-4 py-1.5 text-xs font-semibold text-rust transition hover:bg-rust hover:text-white"
+              >
+                Hapus acara ini
+              </button>
+            </div>
+          )}
 
-          {showForm && (
+          {/* Mobile floating action button */}
+          {unlocked && (
+            <button
+              onClick={() => {
+                setEditing(null);
+                setShowForm(true);
+              }}
+              aria-label="Tambah transaksi"
+              className="fixed bottom-6 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-pop transition hover:bg-brand-dark sm:hidden"
+            >
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M11 4v14M4 11h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+
+          {showForm && unlocked && (
             <TransactionModal
               eventId={eventId}
+              pin={effectivePin}
               categories={categories}
               onCategoriesChange={setCategories}
               editing={editing}
@@ -224,7 +365,26 @@ export default function EventDetailPage() {
               title="Hapus transaksi?"
               message={`Transaksi "${toDelete.kategori}" akan dihapus permanen dan tidak bisa dikembalikan.`}
               onClose={() => setToDelete(null)}
-              onConfirm={() => handleDelete(toDelete)}
+              onConfirm={() => handleDeleteTransaction(toDelete)}
+            />
+          )}
+
+          {showDeleteEvent && (
+            <ConfirmDialog
+              title="Hapus acara ini?"
+              message={`Seluruh data "${event.nama_acara}" beserta ${transactions.length} transaksi di dalamnya akan dihapus permanen dari database. Pastikan kamu sudah download/print laporannya kalau masih dibutuhkan.`}
+              confirmLabel={deletingEvent ? "Menghapus..." : "Hapus permanen"}
+              onClose={() => setShowDeleteEvent(false)}
+              onConfirm={handleDeleteEvent}
+            />
+          )}
+
+          {pinModalMode && (
+            <PinModal
+              eventId={event.id}
+              mode={pinModalMode}
+              onClose={() => setPinModalMode(null)}
+              onSuccess={handlePinSuccess}
             />
           )}
         </>

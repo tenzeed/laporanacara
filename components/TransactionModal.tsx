@@ -13,6 +13,7 @@ const jenisConfig: Record<Jenis, { label: string; active: string }> = {
 
 export default function TransactionModal({
   eventId,
+  pin,
   categories,
   onCategoriesChange,
   editing,
@@ -20,6 +21,7 @@ export default function TransactionModal({
   onSaved,
 }: {
   eventId: string;
+  pin: string;
   categories: Category[];
   onCategoriesChange: (cats: Category[]) => void;
   editing?: Transaction | null;
@@ -51,14 +53,14 @@ export default function TransactionModal({
   async function handleAddCategory() {
     if (!newCategory.trim()) return;
     try {
-      const cat = await createCategory(newCategory.trim(), jenis);
+      const cat = await createCategory(eventId, pin, newCategory.trim(), jenis);
       onCategoriesChange([...categories, cat]);
       setKategori(cat.nama_kategori);
       setNewCategory("");
       setAddingCategory(false);
     } catch (err) {
       console.error(err);
-      setError("Gagal menambah kategori. Mungkin nama kategori sudah ada.");
+      setError("Gagal menambah kategori. PIN mungkin salah, atau nama kategori sudah ada.");
     }
   }
 
@@ -82,7 +84,7 @@ export default function TransactionModal({
     try {
       let result: Transaction;
       if (editing) {
-        result = await updateTransaction(editing.id, {
+        result = await updateTransaction(editing.id, pin, {
           jenis,
           kategori,
           nominal,
@@ -92,6 +94,7 @@ export default function TransactionModal({
       } else {
         result = await createTransaction({
           event_id: eventId,
+          pin,
           jenis,
           kategori,
           nominal,
@@ -102,7 +105,7 @@ export default function TransactionModal({
       onSaved(result);
     } catch (err) {
       console.error(err);
-      setError("Gagal menyimpan transaksi. Coba lagi.");
+      setError("Gagal menyimpan transaksi. PIN mungkin salah, atau coba lagi.");
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Event, Transaction } from "@/lib/types";
 import { formatRupiah, formatTanggalPanjang, formatRentangTanggal } from "@/lib/format";
 import { computeCategoryTotals, sortTransactionsChronological } from "@/lib/report";
@@ -121,6 +121,66 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  signatureRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+  },
+  signatureDate: {
+    fontSize: 9,
+    color: INK_SOFT,
+  },
+  signatureBlockRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  signatureCol: {
+    width: "42%",
+    alignItems: "center",
+  },
+  signatureRole: {
+    fontSize: 9,
+    marginBottom: 2,
+  },
+  signatureSubrole: {
+    fontSize: 8,
+    color: INK_SOFT,
+    marginBottom: 45,
+  },
+  signatureLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: INK,
+    width: "100%",
+    marginBottom: 4,
+  },
+  signatureName: {
+    fontSize: 8,
+    color: INK_SOFT,
+  },
+  attachGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  attachItem: {
+    width: "31%",
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 4,
+    padding: 6,
+  },
+  attachImage: {
+    width: "100%",
+    height: 110,
+    objectFit: "cover",
+    borderRadius: 2,
+    marginBottom: 5,
+  },
+  attachCaption: {
+    fontSize: 7.5,
+    color: INK_SOFT,
+    lineHeight: 1.4,
+  },
 });
 
 function Money({ value, negative }: { value: number; negative?: boolean }) {
@@ -149,6 +209,7 @@ export default function LaporanDocument({
   const pemasukanKategori = computeCategoryTotals(transactions, "pemasukan");
   const pengeluaranKategori = computeCategoryTotals(transactions, "pengeluaran");
   const kronologis = sortTransactionsChronological(transactions);
+  const berfoto = kronologis.filter((t) => t.foto_url);
 
   const generatedAt = new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -156,6 +217,12 @@ export default function LaporanDocument({
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(new Date());
+
+  const tanggalTtd = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   }).format(new Date());
 
   return (
@@ -276,6 +343,52 @@ export default function LaporanDocument({
               </View>
             ))}
           </View>
+        )}
+
+        <View style={styles.signatureRow} break>
+          <Text style={styles.signatureDate}>............................., {tanggalTtd}</Text>
+        </View>
+        <View style={styles.signatureBlockRow} wrap={false}>
+          <View style={styles.signatureCol}>
+            <Text style={styles.signatureRole}>Bendahara Acara</Text>
+            <Text style={styles.signatureSubrole}> </Text>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureName}>( ..................................... )</Text>
+          </View>
+          <View style={styles.signatureCol}>
+            <Text style={styles.signatureRole}>Mengetahui,</Text>
+            <Text style={styles.signatureSubrole}>Ketua Panitia</Text>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureName}>( ..................................... )</Text>
+          </View>
+        </View>
+
+        {berfoto.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle} break>
+              Lampiran Bukti Transaksi
+            </Text>
+            <View style={styles.attachGrid}>
+              {berfoto.map((t) => (
+                <View style={styles.attachItem} key={t.id} wrap={false}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={t.foto_url as string} style={styles.attachImage} />
+                  <Text style={styles.attachCaption}>
+                    {formatTanggalPanjang(t.tanggal)} — {t.kategori}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.attachCaption,
+                      { fontFamily: "Helvetica-Bold", color: t.jenis === "pemasukan" ? BRAND : RUST },
+                    ]}
+                  >
+                    {t.jenis === "pengeluaran" ? "-" : ""}
+                    {formatRupiah(t.nominal)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
         )}
 
         <View style={styles.footer} fixed>

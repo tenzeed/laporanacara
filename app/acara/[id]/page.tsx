@@ -8,6 +8,7 @@ import SummaryCards from "@/components/SummaryCards";
 import TransactionList from "@/components/TransactionList";
 import TransactionModal from "@/components/TransactionModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import UndoToast from "@/components/UndoToast";
 import PinModal from "@/components/PinModal";
 import EmptyState from "@/components/EmptyState";
 import {
@@ -18,6 +19,7 @@ import {
   deleteTransaction,
   deleteEvent,
 } from "@/lib/queries";
+import { deleteBuktiByUrl } from "@/lib/storage";
 import { getSavedPin, savePin, clearSavedPin } from "@/lib/pin-storage";
 import { formatRentangTanggal } from "@/lib/format";
 import type { Category, Event, Transaction } from "@/lib/types";
@@ -34,7 +36,10 @@ export default function EventDetailPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [toDelete, setToDelete] = useState<Transaction | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    transaction: Transaction;
+    timeoutId: ReturnType<typeof setTimeout>;
+  } | null>(null);
   const [showDeleteEvent, setShowDeleteEvent] = useState(false);
   const [pinModalMode, setPinModalMode] = useState<"unlock" | "set" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,14 +99,34 @@ export default function EventDetailPage() {
     setEditing(null);
   }
 
-  async function handleDeleteTransaction(t: Transaction) {
+  async function finalizeDeleteTransaction(t: Transaction) {
     try {
       await deleteTransaction(t.id, effectivePin);
-      setTransactions((prev) => (prev ?? []).filter((x) => x.id !== t.id));
+      if (t.foto_url) deleteBuktiByUrl(t.foto_url).catch(() => {});
     } catch (err) {
       console.error(err);
-      alert("Gagal menghapus transaksi.");
+    } finally {
+      setPendingDelete((curr) => (curr?.transaction.id === t.id ? null : curr));
     }
+  }
+
+  function handleDeleteTransaction(t: Transaction) {
+    // Kalau ada penghapusan lain yang masih menunggu, selesaikan dulu segera
+    // supaya tidak ada dua timer nunggu bareng.
+    if (pendingDelete) {
+      clearTimeout(pendingDelete.timeoutId);
+      finalizeDeleteTransaction(pendingDelete.transaction);
+    }
+    setTransactions((prev) => (prev ?? []).filter((x) => x.id !== t.id));
+    const timeoutId = setTimeout(() => finalizeDeleteTransaction(t), 5000);
+    setPendingDelete({ transaction: t, timeoutId });
+  }
+
+  function handleUndoDeleteTransaction() {
+    if (!pendingDelete) return;
+    clearTimeout(pendingDelete.timeoutId);
+    setTransactions((prev) => [pendingDelete.transaction, ...(prev ?? [])]);
+    setPendingDelete(null);
   }
 
   async function handleDeleteEvent() {
@@ -110,6 +135,9 @@ export default function EventDetailPage() {
     try {
       const ok = await deleteEvent(event.id, effectivePin);
       if (ok) {
+        (transactions ?? []).forEach((t) => {
+          if (t.foto_url) deleteBuktiByUrl(t.foto_url).catch(() => {});
+        });
         clearSavedPin(event.id);
         router.push("/");
       } else {
@@ -307,7 +335,7 @@ export default function EventDetailPage() {
                   setEditing(t);
                   setShowForm(true);
                 }}
-                onDelete={(t) => setToDelete(t)}
+                onDelete={handleDeleteTransaction}
               />
             )}
           </div>
@@ -360,12 +388,10 @@ export default function EventDetailPage() {
             />
           )}
 
-          {toDelete && (
-            <ConfirmDialog
-              title="Hapus transaksi?"
-              message={`Transaksi "${toDelete.kategori}" akan dihapus permanen dan tidak bisa dikembalikan.`}
-              onClose={() => setToDelete(null)}
-              onConfirm={() => handleDeleteTransaction(toDelete)}
+          {pendingDelete && (
+            <UndoToast
+              message={`Transaksi "${pendingDelete.transaction.kategori}" dihapus`}
+              onUndo={handleUndoDeleteTransaction}
             />
           )}
 

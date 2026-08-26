@@ -51,6 +51,7 @@ create table if not exists transactions (
   nominal numeric(14, 2) not null check (nominal >= 0),
   tanggal date not null,
   keterangan text,
+  foto_url text,
   created_at timestamptz not null default now()
 );
 
@@ -116,7 +117,7 @@ create or replace function verify_event_pin(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_hash text;
@@ -149,7 +150,7 @@ create or replace function create_event_with_pin(
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_id uuid;
@@ -180,7 +181,7 @@ create or replace function set_event_pin_if_missing(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_has_pin boolean;
@@ -242,14 +243,43 @@ $$;
 grant execute on function delete_event_with_pin(uuid, text) to anon, authenticated;
 
 -- ---------------------------------------------------------
--- Fungsi: tambah transaksi (dengan PIN)
+-- Storage bucket untuk foto struk/bukti transaksi
+-- ---------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'bukti-transaksi', 'bukti-transaksi', true, 5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "public_upload_bukti_transaksi" on storage.objects;
+create policy "public_upload_bukti_transaksi" on storage.objects
+  for insert to anon, authenticated
+  with check (bucket_id = 'bukti-transaksi');
+
+drop policy if exists "public_read_bukti_transaksi" on storage.objects;
+create policy "public_read_bukti_transaksi" on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'bukti-transaksi');
+
+drop policy if exists "public_delete_bukti_transaksi" on storage.objects;
+create policy "public_delete_bukti_transaksi" on storage.objects
+  for delete to anon, authenticated
+  using (bucket_id = 'bukti-transaksi');
+
+-- ---------------------------------------------------------
+-- Fungsi: tambah transaksi (dengan PIN, foto struk opsional)
 -- ---------------------------------------------------------
 create or replace function add_transaction_with_pin(
   p_event_id uuid, p_pin text, p_jenis text, p_kategori text,
-  p_nominal numeric, p_tanggal date, p_keterangan text
+  p_nominal numeric, p_tanggal date, p_keterangan text,
+  p_foto_url text default null
 ) returns table (
   id uuid, event_id uuid, jenis text, kategori text, nominal numeric,
-  tanggal date, keterangan text, created_at timestamptz
+  tanggal date, keterangan text, foto_url text, created_at timestamptz
 )
 language plpgsql
 security definer
@@ -261,26 +291,27 @@ begin
   if not verify_event_pin(p_event_id, p_pin) then
     raise exception 'PIN salah';
   end if;
-  insert into transactions (event_id, jenis, kategori, nominal, tanggal, keterangan)
-  values (p_event_id, p_jenis, p_kategori, p_nominal, p_tanggal, p_keterangan)
+  insert into transactions (event_id, jenis, kategori, nominal, tanggal, keterangan, foto_url)
+  values (p_event_id, p_jenis, p_kategori, p_nominal, p_tanggal, p_keterangan, p_foto_url)
   returning transactions.id into v_id;
 
   return query
-    select t.id, t.event_id, t.jenis, t.kategori, t.nominal, t.tanggal, t.keterangan, t.created_at
+    select t.id, t.event_id, t.jenis, t.kategori, t.nominal, t.tanggal, t.keterangan, t.foto_url, t.created_at
     from transactions t where t.id = v_id;
 end;
 $$;
-grant execute on function add_transaction_with_pin(uuid, text, text, text, numeric, date, text) to anon, authenticated;
+grant execute on function add_transaction_with_pin(uuid, text, text, text, numeric, date, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------
--- Fungsi: ubah transaksi (dengan PIN)
+-- Fungsi: ubah transaksi (dengan PIN, foto struk opsional)
 -- ---------------------------------------------------------
 create or replace function update_transaction_with_pin(
   p_transaction_id uuid, p_pin text, p_jenis text, p_kategori text,
-  p_nominal numeric, p_tanggal date, p_keterangan text
+  p_nominal numeric, p_tanggal date, p_keterangan text,
+  p_foto_url text default null
 ) returns table (
   id uuid, event_id uuid, jenis text, kategori text, nominal numeric,
-  tanggal date, keterangan text, created_at timestamptz
+  tanggal date, keterangan text, foto_url text, created_at timestamptz
 )
 language plpgsql
 security definer
@@ -298,15 +329,15 @@ begin
   end if;
   update transactions
     set jenis = p_jenis, kategori = p_kategori, nominal = p_nominal,
-        tanggal = p_tanggal, keterangan = p_keterangan
+        tanggal = p_tanggal, keterangan = p_keterangan, foto_url = p_foto_url
     where id = p_transaction_id;
 
   return query
-    select t.id, t.event_id, t.jenis, t.kategori, t.nominal, t.tanggal, t.keterangan, t.created_at
+    select t.id, t.event_id, t.jenis, t.kategori, t.nominal, t.tanggal, t.keterangan, t.foto_url, t.created_at
     from transactions t where t.id = p_transaction_id;
 end;
 $$;
-grant execute on function update_transaction_with_pin(uuid, text, text, text, numeric, date, text) to anon, authenticated;
+grant execute on function update_transaction_with_pin(uuid, text, text, text, numeric, date, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------
 -- Fungsi: hapus transaksi (dengan PIN)

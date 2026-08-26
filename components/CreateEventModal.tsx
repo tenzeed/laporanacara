@@ -38,8 +38,8 @@ export default function CreateEventModal({
       setError("Tanggal selesai tidak boleh sebelum tanggal mulai.");
       return;
     }
-    if (pin.length < 4) {
-      setError("PIN minimal 4 digit — ini yang dipakai bendahara untuk edit nanti.");
+    if (pin.length !== 6) {
+      setError("PIN harus 6 digit — ini yang dipakai bendahara untuk edit nanti.");
       return;
     }
     if (pin !== confirmPin) {
@@ -118,12 +118,12 @@ export default function CreateEventModal({
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">PIN (4–6 digit)</label>
+              <label className="mb-1.5 block text-sm font-medium text-ink">PIN (6 digit)</label>
               <input
                 inputMode="numeric"
                 value={pin}
                 onChange={(e) => setPin(cleanDigits(e.target.value))}
-                placeholder="••••"
+                placeholder="••••••"
                 className="w-full rounded-lg border border-ink/15 bg-white px-3 py-2.5 text-center font-mono text-base tracking-[0.3em] text-ink placeholder:tracking-normal placeholder:text-ink-soft/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
               />
             </div>
@@ -133,7 +133,7 @@ export default function CreateEventModal({
                 inputMode="numeric"
                 value={confirmPin}
                 onChange={(e) => setConfirmPin(cleanDigits(e.target.value))}
-                placeholder="••••"
+                placeholder="••••••"
                 className="w-full rounded-lg border border-ink/15 bg-white px-3 py-2.5 text-center font-mono text-base tracking-[0.3em] text-ink placeholder:tracking-normal placeholder:text-ink-soft/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
               />
             </div>

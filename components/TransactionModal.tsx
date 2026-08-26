@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Modal from "./Modal";
 import { createCategory, createTransaction, updateTransaction } from "@/lib/queries";
+import { deleteBuktiByUrl, uploadBuktiTransaksi } from "@/lib/storage";
 import { todayISO } from "@/lib/format";
 import type { Category, Jenis, Transaction } from "@/lib/types";
 
@@ -35,8 +36,13 @@ export default function TransactionModal({
   const [keterangan, setKeterangan] = useState(editing?.keterangan ?? "");
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
+  const [existingFotoUrl, setExistingFotoUrl] = useState(editing?.foto_url ?? null);
+  const [newFoto, setNewFoto] = useState<File | null>(null);
+  const [newFotoPreview, setNewFotoPreview] = useState<string | null>(null);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredCategories = useMemo(
     () => categories.filter((c) => c.jenis === jenis),
@@ -48,6 +54,29 @@ export default function TransactionModal({
     if (!categories.some((c) => c.jenis === next && c.nama_kategori === kategori)) {
       setKategori("");
     }
+  }
+
+  function handlePickFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("File harus berupa foto/gambar.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Ukuran foto maksimal 5MB.");
+      return;
+    }
+    setError(null);
+    setNewFoto(file);
+    setNewFotoPreview(URL.createObjectURL(file));
+  }
+
+  function handleRemoveFoto() {
+    setNewFoto(null);
+    setNewFotoPreview(null);
+    setExistingFotoUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleAddCategory() {
@@ -82,6 +111,21 @@ export default function TransactionModal({
     setSaving(true);
     setError(null);
     try {
+      let fotoUrl = existingFotoUrl;
+      if (newFoto) {
+        setUploadingFoto(true);
+        const uploadedUrl = await uploadBuktiTransaksi(newFoto, eventId);
+        setUploadingFoto(false);
+        // Foto lama (kalau diganti) dibersihkan belakangan, best-effort.
+        if (editing?.foto_url && editing.foto_url !== uploadedUrl) {
+          deleteBuktiByUrl(editing.foto_url).catch(() => {});
+        }
+        fotoUrl = uploadedUrl;
+      } else if (editing?.foto_url && existingFotoUrl === null) {
+        // User menghapus foto yang sudah ada tanpa mengganti dengan yang baru.
+        deleteBuktiByUrl(editing.foto_url).catch(() => {});
+      }
+
       let result: Transaction;
       if (editing) {
         result = await updateTransaction(editing.id, pin, {
@@ -90,6 +134,7 @@ export default function TransactionModal({
           nominal,
           tanggal,
           keterangan: keterangan.trim() || null,
+          foto_url: fotoUrl,
         });
       } else {
         result = await createTransaction({
@@ -100,6 +145,7 @@ export default function TransactionModal({
           nominal,
           tanggal,
           keterangan: keterangan.trim() || null,
+          foto_url: fotoUrl,
         });
       }
       onSaved(result);
@@ -108,6 +154,7 @@ export default function TransactionModal({
       setError("Gagal menyimpan transaksi. PIN mungkin salah, atau coba lagi.");
     } finally {
       setSaving(false);
+      setUploadingFoto(false);
     }
   }
 
@@ -221,6 +268,52 @@ export default function TransactionModal({
           />
         </div>
 
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            Foto struk <span className="font-normal text-ink-soft">(opsional)</span>
+          </label>
+          {newFotoPreview || existingFotoUrl ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={newFotoPreview || existingFotoUrl || ""}
+                alt="Preview struk"
+                className="h-16 w-16 shrink-0 rounded-lg border border-ink/10 object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveFoto}
+                className="rounded-full border border-ink/15 px-3.5 py-1.5 text-sm text-ink-soft transition hover:bg-ink/5"
+              >
+                Hapus foto
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-ink/25 py-3 text-sm text-ink-soft transition hover:border-brand hover:text-brand"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M2 5.5A1.5 1.5 0 013.5 4h1.4l.7-1.2h4.8l.7 1.2h1.4A1.5 1.5 0 0114 5.5v7A1.5 1.5 0 0112.5 14h-9A1.5 1.5 0 012 12.5v-7z"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
+                <circle cx="8" cy="8.5" r="2.3" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+              Ambil / unggah foto struk
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePickFoto}
+            className="hidden"
+          />
+        </div>
+
         {error && <p className="text-sm text-rust">{error}</p>}
 
         <button
@@ -228,7 +321,7 @@ export default function TransactionModal({
           disabled={saving}
           className="mt-2 w-full rounded-full bg-brand py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
         >
-          {saving ? "Menyimpan..." : editing ? "Simpan perubahan" : "Simpan transaksi"}
+          {saving ? (uploadingFoto ? "Mengunggah foto..." : "Menyimpan...") : editing ? "Simpan perubahan" : "Simpan transaksi"}
         </button>
       </form>
     </Modal>

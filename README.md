@@ -25,6 +25,11 @@ sekali di SQL Editor. Ini menambahkan fitur PIN & hapus acara tanpa
 mengubah data yang sudah ada. Acara-acara lama otomatis tetap terbuka
 (tanpa PIN) sampai kamu klik "Atur PIN sekarang" di halaman acara itu.
 
+**Sudah pakai versi PIN tapi belum ada foto struk?** Jalankan juga
+**`supabase/migration_v3_foto_struk.sql`** sekali di SQL Editor. Ini
+menambah kolom `foto_url` dan membuat bucket Storage `bukti-transaksi`
+untuk menyimpan foto struk/bukti transaksi.
+
 ## 2. Konfigurasi lokal
 
 ```bash
@@ -75,7 +80,7 @@ di GitHub (Settings → Secrets and variables → Actions).
 
 ## 5. PIN per acara & mode hanya-lihat
 
-Setiap acara punya PIN sendiri (4–6 digit), diatur saat acara dibuat:
+Setiap acara punya PIN sendiri (6 digit), diatur saat acara dibuat:
 
 - **Siapa pun dengan link bisa MELIHAT** acara: ringkasan saldo dan riwayat
   transaksi (mode "hanya lihat" / draft laporan) — tanpa perlu PIN.
@@ -117,7 +122,31 @@ dipakai berkala supaya database gratis (500 MB di free tier) tidak penuh
 oleh acara-acara lama yang sudah tidak relevan. Acara yang masih ingin
 disimpan sebagai arsip cukup dibiarkan saja, tidak perlu dihapus.
 
-## 6. Struktur proyek
+## 7. Foto struk & tanda tangan di laporan
+
+- Saat menambah/edit transaksi (mode bendahara), ada field opsional
+  **"Foto struk"** — bisa ambil foto langsung dari kamera HP atau upload
+  dari galeri. Fotonya tersimpan di Supabase Storage (bucket
+  `bukti-transaksi`, maksimal 5MB per foto) dan ditandai dengan ikon
+  kecil di baris transaksi (bisa diklik untuk lihat foto penuh).
+- Laporan (PDF & halaman preview) otomatis menyertakan bagian
+  **"Lampiran Bukti Transaksi"** berisi semua foto yang diunggah, kalau
+  ada. Kalau tidak ada foto sama sekali, bagian ini otomatis disembunyikan.
+- Laporan juga sekarang punya **blok tanda tangan** di bagian akhir
+  (Bendahara Acara & Mengetahui Ketua Panitia) yang bisa diisi tangan
+  setelah diprint — supaya dokumennya terasa resmi dan siap diserahkan.
+
+## 8. Menghapus transaksi (dengan Urungkan)
+
+Klik ikon hapus di suatu transaksi langsung menghapusnya dari tampilan
+dan memunculkan notifikasi kecil di bawah layar selama 5 detik dengan
+tombol **"Urungkan"**. Kalau tidak diklik, baru transaksi itu benar-benar
+terhapus dari database setelah 5 detik — jadi kalau salah pencet, masih
+ada jeda buat membatalkan tanpa perlu dialog konfirmasi yang mengganggu.
+(Menghapus acara tetap pakai dialog konfirmasi biasa karena aksinya jauh
+lebih besar dan permanen.)
+
+## 9. Struktur proyek
 
 ```
 app/
@@ -125,13 +154,14 @@ app/
   acara/[id]/page.tsx          Detail acara: input transaksi, ringkasan, riwayat, PIN
   acara/[id]/laporan/page.tsx  Laporan LPJ: preview, print, download PDF (selalu terbuka)
   layout.tsx, globals.css      Layout & tema global
-components/                    Komponen UI (modal, kartu, form, dokumen PDF, PIN)
-lib/                           Tipe data, koneksi Supabase, query, format, laporan, pin-storage
+components/                    Komponen UI (modal, kartu, form, dokumen PDF, PIN, toast)
+lib/                           Tipe data, koneksi Supabase, query, format, laporan, pin-storage, storage
 supabase/schema.sql                       Skema database siap-jalan (project baru)
-supabase/migration_v2_pin_dan_hapus.sql   Migrasi tambahan PIN & hapus acara (project lama)
+supabase/migration_v2_pin_dan_hapus.sql   Migrasi PIN & hapus acara (project lama)
+supabase/migration_v3_foto_struk.sql      Migrasi foto struk per transaksi (project lama)
 ```
 
-## 7. Tahapan sesuai PRD
+## 10. Tahapan sesuai PRD
 
 - ✅ Tahap 1 — Dasar: buat acara, input transaksi, ringkasan real-time
 - ✅ Tahap 2 — Laporan: generate & download PDF, print langsung

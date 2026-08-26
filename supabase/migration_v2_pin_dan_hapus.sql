@@ -45,7 +45,7 @@ create or replace function verify_event_pin(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_hash text;
@@ -75,7 +75,7 @@ create or replace function create_event_with_pin(
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_id uuid;
@@ -101,7 +101,7 @@ create or replace function set_event_pin_if_missing(p_event_id uuid, p_pin text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_has_pin boolean;

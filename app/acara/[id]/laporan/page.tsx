@@ -84,6 +84,12 @@ export default function LaporanPage() {
   const pemasukanKategori = computeCategoryTotals(transactions, "pemasukan");
   const pengeluaranKategori = computeCategoryTotals(transactions, "pengeluaran");
   const kronologis = sortTransactionsChronological(transactions);
+  const berfoto = kronologis.filter((t) => t.foto_url);
+  const tanggalTtd = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
   return (
     <main className="mx-auto max-w-3xl px-5 pb-16 pt-6 print-area sm:pt-9">
@@ -214,6 +220,61 @@ export default function LaporanPage() {
           Dibuat otomatis oleh Buku Acara
         </p>
       </div>
+
+      {/* Blok tanda tangan — dicetak terpisah dari kartu putih di atas supaya
+          jelas ini bagian yang perlu ditandatangani basah setelah diprint */}
+      <div className="mt-6 rounded-xl2 border border-ink/10 bg-white p-6 sm:p-10">
+        <p className="mb-8 text-right text-sm text-ink-soft">
+          ............................., {tanggalTtd}
+        </p>
+        <div className="flex justify-between gap-8">
+          <div className="flex flex-1 flex-col items-center text-center">
+            <p className="text-sm text-ink">Bendahara Acara</p>
+            <div className="mt-16 w-full border-b border-ink" />
+            <p className="mt-1.5 text-xs text-ink-soft">( ..................................... )</p>
+          </div>
+          <div className="flex flex-1 flex-col items-center text-center">
+            <p className="text-sm text-ink">Mengetahui,</p>
+            <p className="text-xs text-ink-soft">Ketua Panitia</p>
+            <div className="mt-[3.05rem] w-full border-b border-ink" />
+            <p className="mt-1.5 text-xs text-ink-soft">( ..................................... )</p>
+          </div>
+        </div>
+      </div>
+
+      {berfoto.length > 0 && (
+        <div className="mt-6 rounded-xl2 border border-ink/10 bg-white p-6 sm:p-10">
+          <h2 className="mb-4 font-display text-lg font-semibold text-ink">
+            Lampiran Bukti Transaksi
+          </h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {berfoto.map((t) => (
+              <a
+                key={t.id}
+                href={t.foto_url as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-lg border border-ink/10"
+              >
+                <img src={t.foto_url as string} alt="" className="h-28 w-full object-cover" />
+                <div className="p-2">
+                  <p className="text-[11px] text-ink-soft">
+                    {formatTanggalPanjang(t.tanggal)} — {t.kategori}
+                  </p>
+                  <p
+                    className={`font-mono text-xs font-semibold tabular-nums ${
+                      t.jenis === "pemasukan" ? "text-brand-dark" : "text-rust"
+                    }`}
+                  >
+                    {t.jenis === "pengeluaran" ? "-" : ""}
+                    {formatRupiah(t.nominal)}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

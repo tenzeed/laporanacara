@@ -50,6 +50,24 @@ export default function TransactionList({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-medium text-ink">{t.kategori}</p>
+                    {t.foto_url && (
+                      <a
+                        href={t.foto_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Lihat foto struk"
+                        className="flex shrink-0 items-center gap-0.5 rounded-full bg-ink/5 px-1.5 py-0.5 text-ink-soft transition hover:bg-ink/10 hover:text-ink"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M2 4.5A1.5 1.5 0 013.5 3h1.2l.6-1h3.4l.6 1h1.2A1.5 1.5 0 0112 4.5v6A1.5 1.5 0 0110.5 12h-7A1.5 1.5 0 012 10.5v-6z"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                          />
+                          <circle cx="7" cy="7.5" r="2" stroke="currentColor" strokeWidth="1" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
                   {t.keterangan && (
                     <p className="truncate text-xs text-ink-soft">{t.keterangan}</p>
@@ -64,7 +82,7 @@ export default function TransactionList({
                   {formatRupiah(t.nominal)}
                 </p>
                 {!readOnly && (
-                  <div className="ml-1 flex shrink-0 gap-0.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 sm:opacity-100">
+                  <div className="ml-1 flex shrink-0 gap-0.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                     <button
                       onClick={() => onEdit(t)}
                       aria-label="Edit transaksi"

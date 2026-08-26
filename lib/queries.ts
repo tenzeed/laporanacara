@@ -145,6 +145,7 @@ export async function createTransaction(input: {
   nominal: number;
   tanggal: string;
   keterangan?: string | null;
+  foto_url?: string | null;
 }): Promise<Transaction> {
   const { data, error } = await supabase
     .rpc("add_transaction_with_pin", {
@@ -155,6 +156,7 @@ export async function createTransaction(input: {
       p_nominal: input.nominal,
       p_tanggal: input.tanggal,
       p_keterangan: input.keterangan || null,
+      p_foto_url: input.foto_url || null,
     })
     .single();
   if (error) throw error;
@@ -170,6 +172,7 @@ export async function updateTransaction(
     nominal: number;
     tanggal: string;
     keterangan?: string | null;
+    foto_url?: string | null;
   }
 ): Promise<Transaction> {
   const { data, error } = await supabase
@@ -181,6 +184,7 @@ export async function updateTransaction(
       p_nominal: input.nominal,
       p_tanggal: input.tanggal,
       p_keterangan: input.keterangan || null,
+      p_foto_url: input.foto_url || null,
     })
     .single();
   if (error) throw error;

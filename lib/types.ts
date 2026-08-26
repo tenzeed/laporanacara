@@ -28,6 +28,7 @@ export interface Transaction {
   nominal: number;
   tanggal: string;
   keterangan: string | null;
+  foto_url: string | null;
   created_at: string;
 }
 

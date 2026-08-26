@@ -26,8 +26,8 @@ export default function PinModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (pin.length < 4) {
-      setError("PIN minimal 4 digit.");
+    if (pin.length !== 6) {
+      setError("PIN harus 6 digit.");
       return;
     }
     if (mode === "set" && pin !== confirmPin) {
@@ -74,13 +74,13 @@ export default function PinModal({
             : "Acara ini belum punya PIN. Atur sekarang supaya hanya kamu yang bisa mengedit transaksinya."}
         </p>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-ink">PIN (4–6 digit)</label>
+          <label className="mb-1.5 block text-sm font-medium text-ink">PIN (6 digit)</label>
           <input
             autoFocus
             inputMode="numeric"
             value={pin}
             onChange={(e) => setPin(cleanDigits(e.target.value))}
-            placeholder="••••"
+            placeholder="••••••"
             className="w-full rounded-lg border border-ink/15 bg-white px-3.5 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-ink placeholder:tracking-normal placeholder:text-ink-soft/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
           />
         </div>
@@ -91,7 +91,7 @@ export default function PinModal({
               inputMode="numeric"
               value={confirmPin}
               onChange={(e) => setConfirmPin(cleanDigits(e.target.value))}
-              placeholder="••••"
+              placeholder="••••••"
               className="w-full rounded-lg border border-ink/15 bg-white px-3.5 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-ink placeholder:tracking-normal placeholder:text-ink-soft/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
           </div>

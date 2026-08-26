@@ -70,6 +70,9 @@ body {
   .no-print {
     display: none !important;
   }
+  .print-only {
+    display: block !important;
+  }
   .print-area {
     padding: 0 !important;
   }

@@ -16,6 +16,8 @@ export default function LaporanPage() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [namaBendahara, setNamaBendahara] = useState("");
+  const [namaKetua, setNamaKetua] = useState("");
 
   useEffect(() => {
     Promise.all([fetchEvent(eventId), fetchTransactions(eventId)])
@@ -38,7 +40,12 @@ export default function LaporanPage() {
         import("@/components/LaporanDocument"),
       ]);
       const blob = await pdf(
-        <LaporanDocument event={event} transactions={transactions} />
+        <LaporanDocument
+          event={event}
+          transactions={transactions}
+          namaBendahara={namaBendahara}
+          namaKetua={namaKetua}
+        />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -216,30 +223,44 @@ export default function LaporanPage() {
           </div>
         )}
 
-        <p className="mt-8 text-center text-xs text-ink-soft/70">
-          Dibuat otomatis oleh Buku Acara
-        </p>
-      </div>
-
-      {/* Blok tanda tangan — dicetak terpisah dari kartu putih di atas supaya
-          jelas ini bagian yang perlu ditandatangani basah setelah diprint */}
-      <div className="mt-6 rounded-xl2 border border-ink/10 bg-white p-6 sm:p-10">
-        <p className="mb-8 text-right text-sm text-ink-soft">
-          ............................., {tanggalTtd}
-        </p>
-        <div className="flex justify-between gap-8">
-          <div className="flex flex-1 flex-col items-center text-center">
-            <p className="text-sm text-ink">Bendahara Acara</p>
-            <div className="mt-16 w-full border-b border-ink" />
-            <p className="mt-1.5 text-xs text-ink-soft">( ..................................... )</p>
-          </div>
-          <div className="flex flex-1 flex-col items-center text-center">
-            <p className="text-sm text-ink">Mengetahui,</p>
-            <p className="text-xs text-ink-soft">Ketua Panitia</p>
-            <div className="mt-[3.05rem] w-full border-b border-ink" />
-            <p className="mt-1.5 text-xs text-ink-soft">( ..................................... )</p>
+        <div className="mt-14 border-t border-dashed border-ink/15 pt-8">
+          <p className="mb-8 text-right text-sm text-ink-soft">
+            ............................., {tanggalTtd}
+          </p>
+          <div className="flex justify-between gap-8">
+            <div className="flex flex-1 flex-col items-center text-center">
+              <p className="text-sm text-ink">Bendahara Acara</p>
+              <div className="mt-16 w-full border-b border-ink" />
+              <input
+                value={namaBendahara}
+                onChange={(e) => setNamaBendahara(e.target.value)}
+                placeholder="Nama lengkap bendahara"
+                className="no-print mt-1.5 w-full border-0 bg-transparent text-center text-xs text-ink outline-none placeholder:text-ink-soft/40 focus:bg-ink/5"
+              />
+              <p className="print-only mt-1.5 hidden text-xs text-ink">
+                ({namaBendahara.trim() || "....................................."})
+              </p>
+            </div>
+            <div className="flex flex-1 flex-col items-center text-center">
+              <p className="text-sm text-ink">Mengetahui,</p>
+              <p className="text-xs text-ink-soft">Ketua Panitia</p>
+              <div className="mt-[3.05rem] w-full border-b border-ink" />
+              <input
+                value={namaKetua}
+                onChange={(e) => setNamaKetua(e.target.value)}
+                placeholder="Nama lengkap ketua panitia"
+                className="no-print mt-1.5 w-full border-0 bg-transparent text-center text-xs text-ink outline-none placeholder:text-ink-soft/40 focus:bg-ink/5"
+              />
+              <p className="print-only mt-1.5 hidden text-xs text-ink">
+                ({namaKetua.trim() || "....................................."})
+              </p>
+            </div>
           </div>
         </div>
+
+        <p className="mt-10 text-center text-xs text-ink-soft/70">
+          Dibuat otomatis oleh Buku Acara
+        </p>
       </div>
 
       {berfoto.length > 0 && (

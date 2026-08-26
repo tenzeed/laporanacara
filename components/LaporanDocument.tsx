@@ -126,6 +126,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     marginBottom: 8,
   },
+  signatureSection: {
+    marginTop: 28,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+  },
   signatureDate: {
     fontSize: 9,
     color: INK_SOFT,
@@ -194,9 +200,13 @@ function Money({ value, negative }: { value: number; negative?: boolean }) {
 export default function LaporanDocument({
   event,
   transactions,
+  namaBendahara,
+  namaKetua,
 }: {
   event: Event;
   transactions: Transaction[];
+  namaBendahara?: string;
+  namaKetua?: string;
 }) {
   const totalPemasukan = transactions
     .filter((t) => t.jenis === "pemasukan")
@@ -302,7 +312,7 @@ export default function LaporanDocument({
           </View>
         )}
 
-        <Text style={styles.sectionTitle} break>
+        <Text style={styles.sectionTitle}>
           Daftar Transaksi Lengkap
         </Text>
         {kronologis.length === 0 ? (
@@ -345,21 +355,27 @@ export default function LaporanDocument({
           </View>
         )}
 
-        <View style={styles.signatureRow} break>
-          <Text style={styles.signatureDate}>............................., {tanggalTtd}</Text>
-        </View>
-        <View style={styles.signatureBlockRow} wrap={false}>
-          <View style={styles.signatureCol}>
-            <Text style={styles.signatureRole}>Bendahara Acara</Text>
-            <Text style={styles.signatureSubrole}> </Text>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureName}>( ..................................... )</Text>
+        <View style={styles.signatureSection} wrap={false}>
+          <View style={styles.signatureRow}>
+            <Text style={styles.signatureDate}>............................., {tanggalTtd}</Text>
           </View>
-          <View style={styles.signatureCol}>
-            <Text style={styles.signatureRole}>Mengetahui,</Text>
-            <Text style={styles.signatureSubrole}>Ketua Panitia</Text>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureName}>( ..................................... )</Text>
+          <View style={styles.signatureBlockRow}>
+            <View style={styles.signatureCol}>
+              <Text style={styles.signatureRole}>Bendahara Acara</Text>
+              <Text style={styles.signatureSubrole}> </Text>
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureName}>
+                ( {namaBendahara?.trim() || "....................................."} )
+              </Text>
+            </View>
+            <View style={styles.signatureCol}>
+              <Text style={styles.signatureRole}>Mengetahui,</Text>
+              <Text style={styles.signatureSubrole}>Ketua Panitia</Text>
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureName}>
+                ( {namaKetua?.trim() || "....................................."} )
+              </Text>
+            </View>
           </View>
         </View>
 

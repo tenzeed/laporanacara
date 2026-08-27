@@ -221,3 +221,43 @@ export async function deleteTransaction(id: string, pin: string): Promise<boolea
   if (error) throw error;
   return Boolean(data);
 }
+
+// ---------- Admin (PIN master, terpisah dari PIN per acara) ----------
+
+export async function verifyAdminPin(pin: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("verify_admin_pin", { p_pin: pin });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function adminResetEventPin(
+  adminPin: string,
+  eventId: string,
+  newPin: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("admin_reset_event_pin", {
+    p_admin_pin: adminPin,
+    p_event_id: eventId,
+    p_new_pin: newPin,
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function adminDeleteEvent(adminPin: string, eventId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("admin_delete_event", {
+    p_admin_pin: adminPin,
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function adminChangePin(currentPin: string, newPin: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("admin_change_pin", {
+    p_current_admin_pin: currentPin,
+    p_new_admin_pin: newPin,
+  });
+  if (error) throw error;
+  return Boolean(data);
+}

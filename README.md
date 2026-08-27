@@ -35,6 +35,19 @@ Jalankan juga **`supabase/migration_v4_edit_acara.sql`** sekali di SQL
 Editor. Ini menambahkan fungsi untuk mengubah nama/tanggal/deskripsi
 acara setelah dibuat.
 
+**Mau punya akses admin (reset PIN & hapus acara tanpa tahu PIN-nya)?**
+Jalankan juga **`supabase/migration_v5_admin_panel.sql`**, lalu jalankan
+SEKALI LAGI perintah berikut secara terpisah di SQL Editor yang sama
+(ganti teks contoh dengan PIN rahasiamu sendiri, minimal 8 karakter):
+
+```sql
+insert into app_admin (id, pin_hash)
+values (1, crypt('GANTI-DENGAN-PIN-RAHASIA-KAMU', gen_salt('bf')))
+on conflict (id) do nothing;
+```
+
+Lihat bagian 10 di bawah untuk detail lengkap panel admin ini.
+
 ## 2. Konfigurasi lokal
 
 ```bash
@@ -165,13 +178,56 @@ lebih besar dan permanen.)
   ulang kalau terakhir aktif sudah lebih dari 30 menit yang lalu, bahkan
   setelah reload halaman.
 
-## 10. Struktur proyek
+## 10. Panel Admin — pemulihan kalau bendahara lupa PIN
+
+Karena setiap acara berdiri sendiri dengan PIN masing-masing, kamu
+sebagai pengelola utama aplikasi butuh "kunci induk" supaya tidak ikut
+terkunci kalau bendahara lupa PIN atau lupa menghapus acara lama.
+
+**Cara setup** (sekali saja, lihat bagian 1 di atas untuk perintah
+lengkapnya): jalankan `migration_v5_admin_panel.sql`, lalu jalankan
+perintah `insert into app_admin (...)` dengan PIN rahasiamu sendiri.
+
+**Cara pakai:** buka `https://domain-kamu.vercel.app/admin` (halaman ini
+sengaja **tidak ditautkan dari mana pun** di aplikasi utama — cukup
+ketik manual di address bar saat butuh). Masukkan PIN admin, lalu kamu
+akan melihat **semua acara** dengan dua aksi di tiap barisnya:
+
+- **Reset PIN** — atur PIN baru untuk acara itu tanpa perlu tahu PIN
+  lamanya sama sekali. PIN baru langsung ditampilkan sekali (catat/
+  sampaikan ke bendahara terkait, karena tidak akan ditampilkan lagi
+  setelah ditutup). Bendahara lama otomatis tidak bisa pakai PIN lama
+  lagi setelah direset.
+- **Hapus** — hapus acara itu beserta seluruh transaksi & foto struknya
+  secara permanen, tanpa perlu tahu PIN acara tersebut. Cocok untuk
+  membersihkan acara-acara lama yang lupa dihapus oleh bendahara
+  sebelumnya.
+
+**Catatan keamanan:**
+- PIN admin **beda total** dari PIN acara biasa — panjangnya bebas
+  (disarankan minimal 8 karakter, boleh campur huruf & angka, karena
+  ini kunci ke *semua* acara sekaligus). Jangan dibagikan seperti PIN
+  acara biasa; hanya kamu sebagai pengelola utama yang perlu tahu.
+- Kalau salah masukkan PIN admin 5 kali berturut-turut, panel ini
+  otomatis terkunci sementara selama 15 menit — pencegahan tebak-tebak
+  otomatis.
+- PIN admin **tidak pernah disimpan di localStorage/browser** — beda
+  dari PIN acara biasa. Setiap buka `/admin`, kamu perlu masukkan PIN
+  admin lagi. Ini sengaja dibuat lebih ketat karena satu PIN ini
+  mengontrol seluruh acara sekaligus.
+- Kalau PIN admin sendiri lupa, satu-satunya cara pulih adalah lewat
+  Supabase SQL Editor langsung (`update app_admin set pin_hash = ...`)
+  — karena hanya kamu yang punya akses ke dashboard Supabase project
+  ini, itu sudah jadi "kunci cadangan" paling akhir.
+
+## 11. Struktur proyek
 
 ```
 app/
   page.tsx                     Daftar Acara (home)
   acara/[id]/page.tsx          Detail acara: input transaksi, ringkasan, riwayat, PIN
   acara/[id]/laporan/page.tsx  Laporan LPJ: preview, print, download PDF (selalu terbuka)
+  admin/page.tsx               Panel admin: reset PIN & hapus acara (tidak ditautkan di UI)
   layout.tsx, globals.css      Layout & tema global
 components/                    Komponen UI (modal, kartu, form, dokumen PDF, PIN, toast)
 lib/                           Tipe data, koneksi Supabase, query, format, laporan, pin-storage, storage
@@ -179,9 +235,10 @@ supabase/schema.sql                       Skema database siap-jalan (project bar
 supabase/migration_v2_pin_dan_hapus.sql   Migrasi PIN & hapus acara (project lama)
 supabase/migration_v3_foto_struk.sql      Migrasi foto struk per transaksi (project lama)
 supabase/migration_v4_edit_acara.sql      Migrasi fungsi edit detail acara (project lama)
+supabase/migration_v5_admin_panel.sql     Migrasi panel admin (project lama)
 ```
 
-## 11. Tahapan sesuai PRD
+## 12. Tahapan sesuai PRD
 
 - ✅ Tahap 1 — Dasar: buat acara, input transaksi, ringkasan real-time
 - ✅ Tahap 2 — Laporan: generate & download PDF, print langsung

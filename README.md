@@ -30,6 +30,11 @@ mengubah data yang sudah ada. Acara-acara lama otomatis tetap terbuka
 menambah kolom `foto_url` dan membuat bucket Storage `bukti-transaksi`
 untuk menyimpan foto struk/bukti transaksi.
 
+**Sudah pakai versi foto struk tapi belum bisa edit detail acara?**
+Jalankan juga **`supabase/migration_v4_edit_acara.sql`** sekali di SQL
+Editor. Ini menambahkan fungsi untuk mengubah nama/tanggal/deskripsi
+acara setelah dibuat.
+
 ## 2. Konfigurasi lokal
 
 ```bash
@@ -146,7 +151,21 @@ ada jeda buat membatalkan tanpa perlu dialog konfirmasi yang mengganggu.
 (Menghapus acara tetap pakai dialog konfirmasi biasa karena aksinya jauh
 lebih besar dan permanen.)
 
-## 9. Struktur proyek
+## 9. Edit detail acara & auto-lock PIN
+
+- Di mode bendahara (sudah unlock), ada ikon pensil kecil di sebelah
+  nama acara untuk mengubah **nama, tanggal, dan deskripsi** acara kalau
+  ada salah ketik atau perlu diperbarui. Tidak perlu hapus-buat-ulang lagi.
+- Mode bendahara sekarang **otomatis terkunci setelah 30 menit tanpa
+  aktivitas sama sekali** di halaman itu (tidak ada klik/ketik/scroll).
+  Ini supaya kalau HP dipinjam orang lain atau lupa dikunci di device
+  bersama (mis. tablet sekretariat), aksesnya tidak terbuka selamanya.
+  Begitu ada aktivitas lagi (klik, ketik, scroll), timer-nya di-reset;
+  PIN yang tersimpan di localStorage juga dianggap "basi" dan diminta
+  ulang kalau terakhir aktif sudah lebih dari 30 menit yang lalu, bahkan
+  setelah reload halaman.
+
+## 10. Struktur proyek
 
 ```
 app/
@@ -159,9 +178,10 @@ lib/                           Tipe data, koneksi Supabase, query, format, lapor
 supabase/schema.sql                       Skema database siap-jalan (project baru)
 supabase/migration_v2_pin_dan_hapus.sql   Migrasi PIN & hapus acara (project lama)
 supabase/migration_v3_foto_struk.sql      Migrasi foto struk per transaksi (project lama)
+supabase/migration_v4_edit_acara.sql      Migrasi fungsi edit detail acara (project lama)
 ```
 
-## 10. Tahapan sesuai PRD
+## 11. Tahapan sesuai PRD
 
 - ✅ Tahap 1 — Dasar: buat acara, input transaksi, ringkasan real-time
 - ✅ Tahap 2 — Laporan: generate & download PDF, print langsung

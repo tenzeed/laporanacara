@@ -203,11 +203,13 @@ export default function LaporanDocument({
   transactions,
   namaBendahara,
   namaKetua,
+  tempat,
 }: {
   event: Event;
   transactions: Transaction[];
   namaBendahara?: string;
   namaKetua?: string;
+  tempat?: string;
 }) {
   const totalPemasukan = transactions
     .filter((t) => t.jenis === "pemasukan")
@@ -358,7 +360,9 @@ export default function LaporanDocument({
 
         <View style={styles.signatureSection} wrap={false}>
           <View style={styles.signatureRow}>
-            <Text style={styles.signatureDate}>............................., {tanggalTtd}</Text>
+            <Text style={styles.signatureDate}>
+              {tempat?.trim() || "....................."}, {tanggalTtd}
+            </Text>
           </View>
           <View style={styles.signatureBlockRow}>
             <View style={styles.signatureCol}>

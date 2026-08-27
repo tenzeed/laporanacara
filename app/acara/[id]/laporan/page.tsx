@@ -18,6 +18,7 @@ export default function LaporanPage() {
   const [downloading, setDownloading] = useState(false);
   const [namaBendahara, setNamaBendahara] = useState("");
   const [namaKetua, setNamaKetua] = useState("");
+  const [tempatTtd, setTempatTtd] = useState("");
 
   useEffect(() => {
     Promise.all([fetchEvent(eventId), fetchTransactions(eventId)])
@@ -45,6 +46,7 @@ export default function LaporanPage() {
           transactions={transactions}
           namaBendahara={namaBendahara}
           namaKetua={namaKetua}
+          tempat={tempatTtd}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -224,9 +226,19 @@ export default function LaporanPage() {
         )}
 
         <div className="mt-14 border-t border-dashed border-ink/15 pt-8">
-          <p className="mb-8 text-right text-sm text-ink-soft">
-            ............................., {tanggalTtd}
-          </p>
+          <div className="mb-8 flex items-baseline justify-end gap-1 text-sm text-ink-soft">
+            <input
+              value={tempatTtd}
+              onChange={(e) => setTempatTtd(e.target.value)}
+              placeholder="Kota"
+              size={Math.max(tempatTtd.length, 8)}
+              className="no-print border-0 bg-transparent text-right text-sm text-ink-soft outline-none placeholder:text-ink-soft/40 focus:bg-ink/5"
+            />
+            <span className="print-only hidden">
+              {tempatTtd.trim() || "....................."}
+            </span>
+            <span>, {tanggalTtd}</span>
+          </div>
           <div className="flex justify-between gap-8">
             <div className="flex flex-1 flex-col items-center text-center">
               <p className="invisible text-xs text-ink-soft">Mengetahui,</p>

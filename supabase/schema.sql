@@ -222,6 +222,32 @@ $$;
 grant execute on function update_event_status_with_pin(uuid, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------
+-- Fungsi: ubah detail acara — nama, tanggal, deskripsi (dengan PIN)
+-- ---------------------------------------------------------
+create or replace function update_event_details_with_pin(
+  p_event_id uuid, p_pin text, p_nama_acara text,
+  p_tanggal_mulai date, p_tanggal_selesai date, p_deskripsi text
+) returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if not verify_event_pin(p_event_id, p_pin) then
+    return false;
+  end if;
+  update events
+    set nama_acara = p_nama_acara,
+        tanggal_mulai = p_tanggal_mulai,
+        tanggal_selesai = p_tanggal_selesai,
+        deskripsi = p_deskripsi
+    where id = p_event_id;
+  return true;
+end;
+$$;
+grant execute on function update_event_details_with_pin(uuid, text, text, date, date, text) to anon, authenticated;
+
+-- ---------------------------------------------------------
 -- Fungsi: hapus acara beserta seluruh transaksinya (dengan PIN)
 -- Dipakai untuk membersihkan acara lama yang LPJ-nya sudah tidak
 -- dibutuhkan lagi, supaya kuota database gratis tidak penuh.

@@ -85,6 +85,28 @@ export async function updateEventStatus(
   return Boolean(data);
 }
 
+export async function updateEventDetails(
+  eventId: string,
+  pin: string,
+  input: {
+    nama_acara: string;
+    tanggal_mulai: string;
+    tanggal_selesai: string;
+    deskripsi?: string | null;
+  }
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("update_event_details_with_pin", {
+    p_event_id: eventId,
+    p_pin: pin,
+    p_nama_acara: input.nama_acara,
+    p_tanggal_mulai: input.tanggal_mulai,
+    p_tanggal_selesai: input.tanggal_selesai,
+    p_deskripsi: input.deskripsi || null,
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
 /** Menghapus acara beserta seluruh transaksinya. Aksi permanen. */
 export async function deleteEvent(eventId: string, pin: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("delete_event_with_pin", {

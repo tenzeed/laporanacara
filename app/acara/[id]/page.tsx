@@ -7,6 +7,7 @@ import Brand from "@/components/Brand";
 import SummaryCards from "@/components/SummaryCards";
 import TransactionList from "@/components/TransactionList";
 import TransactionModal from "@/components/TransactionModal";
+import EditEventModal from "@/components/EditEventModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import UndoToast from "@/components/UndoToast";
 import PinModal from "@/components/PinModal";
@@ -20,7 +21,14 @@ import {
   deleteEvent,
 } from "@/lib/queries";
 import { deleteBuktiByUrl } from "@/lib/storage";
-import { getSavedPin, savePin, clearSavedPin } from "@/lib/pin-storage";
+import {
+  getSavedPin,
+  savePin,
+  clearSavedPin,
+  touchActivity,
+  isPinStillFresh,
+  AUTO_LOCK_MS,
+} from "@/lib/pin-storage";
 import { formatRentangTanggal } from "@/lib/format";
 import type { Category, Event, Transaction } from "@/lib/types";
 
@@ -41,10 +49,12 @@ export default function EventDetailPage() {
     timeoutId: ReturnType<typeof setTimeout>;
   } | null>(null);
   const [showDeleteEvent, setShowDeleteEvent] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState(false);
   const [pinModalMode, setPinModalMode] = useState<"unlock" | "set" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState(false);
+  const [autoLockNotice, setAutoLockNotice] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchEvent(eventId), fetchTransactions(eventId), fetchCategories()])
@@ -54,7 +64,15 @@ export default function EventDetailPage() {
         setCategories(cats);
         if (ev.has_pin) {
           const saved = getSavedPin(ev.id);
-          if (saved) setPin(saved);
+          if (saved) {
+            if (isPinStillFresh(ev.id)) {
+              setPin(saved);
+              touchActivity(ev.id);
+            } else {
+              // Sudah lewat batas idle sejak terakhir aktif — minta PIN lagi.
+              clearSavedPin(ev.id);
+            }
+          }
         }
       })
       .catch((err) => {
@@ -65,6 +83,33 @@ export default function EventDetailPage() {
 
   const unlocked = event ? !event.has_pin || pin !== null : false;
   const effectivePin = pin ?? "";
+
+  // Auto-lock: kalau mode bendahara terbuka dan tidak ada interaksi sama
+  // sekali selama AUTO_LOCK_MS, kunci lagi otomatis demi keamanan device bersama.
+  useEffect(() => {
+    if (!event?.has_pin || pin === null) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    function resetTimer() {
+      touchActivity(event!.id);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        clearSavedPin(event!.id);
+        setPin(null);
+        setAutoLockNotice(true);
+      }, AUTO_LOCK_MS);
+    }
+
+    const activityEvents = ["click", "keydown", "touchstart", "scroll"];
+    activityEvents.forEach((name) => window.addEventListener(name, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach((name) => window.removeEventListener(name, resetTimer));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id, event?.has_pin, pin]);
 
   const totalPemasukan =
     transactions?.filter((t) => t.jenis === "pemasukan").reduce((a, b) => a + b.nominal, 0) ?? 0;
@@ -155,10 +200,16 @@ export default function EventDetailPage() {
     if (!event) return;
     savePin(event.id, enteredPin);
     setPin(enteredPin);
+    setAutoLockNotice(false);
     if (pinModalMode === "set") {
       setEvent({ ...event, has_pin: true });
     }
     setPinModalMode(null);
+  }
+
+  function handleEventDetailsSaved(updated: Event) {
+    setEvent(updated);
+    setShowEditEvent(false);
   }
 
   function handleLock() {
@@ -207,9 +258,27 @@ export default function EventDetailPage() {
         <>
           <div className="mt-6 flex items-start justify-between gap-3">
             <div>
-              <h1 className="font-display text-2xl font-semibold leading-tight text-ink sm:text-[28px]">
-                {event.nama_acara}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-2xl font-semibold leading-tight text-ink sm:text-[28px]">
+                  {event.nama_acara}
+                </h1>
+                {unlocked && (
+                  <button
+                    onClick={() => setShowEditEvent(true)}
+                    aria-label="Edit detail acara"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-ink/5 hover:text-ink"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M9.5 1.5l3 3-7 7-3.5.5.5-3.5 7-7z"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <p className="mt-1.5 text-sm text-ink-soft">
                 {formatRentangTanggal(event.tanggal_mulai, event.tanggal_selesai)}
               </p>
@@ -242,6 +311,19 @@ export default function EventDetailPage() {
               </span>
             )}
           </div>
+
+          {autoLockNotice && (
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gold/30 bg-gold-50 px-3.5 py-2.5 text-xs text-ink">
+              <span>Mode bendahara terkunci otomatis karena tidak ada aktivitas.</span>
+              <button
+                onClick={() => setAutoLockNotice(false)}
+                className="shrink-0 text-ink-soft transition hover:text-ink"
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Mode indicator + unlock / lock / set-pin controls */}
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 bg-white/60 px-3.5 py-2.5">
@@ -402,6 +484,15 @@ export default function EventDetailPage() {
               confirmLabel={deletingEvent ? "Menghapus..." : "Hapus permanen"}
               onClose={() => setShowDeleteEvent(false)}
               onConfirm={handleDeleteEvent}
+            />
+          )}
+
+          {showEditEvent && (
+            <EditEventModal
+              event={event}
+              pin={effectivePin}
+              onClose={() => setShowEditEvent(false)}
+              onSaved={handleEventDetailsSaved}
             />
           )}
 

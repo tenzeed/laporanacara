@@ -6,6 +6,7 @@ import Brand from "@/components/Brand";
 import EventCard from "@/components/EventCard";
 import EmptyState from "@/components/EmptyState";
 import CreateEventModal from "@/components/CreateEventModal";
+import CreditFooter from "@/components/CreditFooter";
 import { fetchEvents } from "@/lib/queries";
 import type { Event, EventStatus } from "@/lib/types";
 
@@ -123,6 +124,8 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      <CreditFooter />
 
       {/* Mobile floating action button */}
       <button

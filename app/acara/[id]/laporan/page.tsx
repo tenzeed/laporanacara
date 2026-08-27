@@ -229,8 +229,9 @@ export default function LaporanPage() {
           </p>
           <div className="flex justify-between gap-8">
             <div className="flex flex-1 flex-col items-center text-center">
+              <p className="invisible text-xs text-ink-soft">Mengetahui,</p>
               <p className="text-sm text-ink">Bendahara Acara</p>
-              <div className="mt-16 w-full border-b border-ink" />
+              <div className="mt-12 w-full border-b border-ink" />
               <input
                 value={namaBendahara}
                 onChange={(e) => setNamaBendahara(e.target.value)}
@@ -238,13 +239,13 @@ export default function LaporanPage() {
                 className="no-print mt-1.5 w-full border-0 bg-transparent text-center text-xs text-ink outline-none placeholder:text-ink-soft/40 focus:bg-ink/5"
               />
               <p className="print-only mt-1.5 hidden text-xs text-ink">
-                ({namaBendahara.trim() || "....................................."})
+                {namaBendahara.trim() || "....................................."}
               </p>
             </div>
             <div className="flex flex-1 flex-col items-center text-center">
-              <p className="text-sm text-ink">Mengetahui,</p>
-              <p className="text-xs text-ink-soft">Ketua Panitia</p>
-              <div className="mt-[3.05rem] w-full border-b border-ink" />
+              <p className="text-xs text-ink-soft">Mengetahui,</p>
+              <p className="text-sm text-ink">Ketua Panitia</p>
+              <div className="mt-12 w-full border-b border-ink" />
               <input
                 value={namaKetua}
                 onChange={(e) => setNamaKetua(e.target.value)}
@@ -252,7 +253,7 @@ export default function LaporanPage() {
                 className="no-print mt-1.5 w-full border-0 bg-transparent text-center text-xs text-ink outline-none placeholder:text-ink-soft/40 focus:bg-ink/5"
               />
               <p className="print-only mt-1.5 hidden text-xs text-ink">
-                ({namaKetua.trim() || "....................................."})
+                {namaKetua.trim() || "....................................."}
               </p>
             </div>
           </div>

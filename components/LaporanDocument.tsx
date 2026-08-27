@@ -144,19 +144,20 @@ const styles = StyleSheet.create({
     width: "42%",
     alignItems: "center",
   },
-  signatureRole: {
-    fontSize: 9,
-    marginBottom: 2,
-  },
-  signatureSubrole: {
+  signatureQualifier: {
     fontSize: 8,
     color: INK_SOFT,
-    marginBottom: 45,
+    marginBottom: 2,
+  },
+  signatureRole: {
+    fontSize: 9,
+    color: INK,
   },
   signatureLine: {
     borderBottomWidth: 1,
     borderBottomColor: INK,
     width: "100%",
+    marginTop: 42,
     marginBottom: 4,
   },
   signatureName: {
@@ -361,19 +362,19 @@ export default function LaporanDocument({
           </View>
           <View style={styles.signatureBlockRow}>
             <View style={styles.signatureCol}>
+              <Text style={[styles.signatureQualifier, { opacity: 0 }]}>Mengetahui,</Text>
               <Text style={styles.signatureRole}>Bendahara Acara</Text>
-              <Text style={styles.signatureSubrole}> </Text>
               <View style={styles.signatureLine} />
               <Text style={styles.signatureName}>
-                ( {namaBendahara?.trim() || "....................................."} )
+                {namaBendahara?.trim() || "....................................."}
               </Text>
             </View>
             <View style={styles.signatureCol}>
-              <Text style={styles.signatureRole}>Mengetahui,</Text>
-              <Text style={styles.signatureSubrole}>Ketua Panitia</Text>
+              <Text style={styles.signatureQualifier}>Mengetahui,</Text>
+              <Text style={styles.signatureRole}>Ketua Panitia</Text>
               <View style={styles.signatureLine} />
               <Text style={styles.signatureName}>
-                ( {namaKetua?.trim() || "....................................."} )
+                {namaKetua?.trim() || "....................................."}
               </Text>
             </View>
           </View>

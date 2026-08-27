@@ -341,22 +341,22 @@ create or replace function update_transaction_with_pin(
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_event_id uuid;
 begin
-  select event_id into v_event_id from transactions where id = p_transaction_id;
+  select t.event_id into v_event_id from transactions t where t.id = p_transaction_id;
   if v_event_id is null then
     raise exception 'Transaksi tidak ditemukan';
   end if;
   if not verify_event_pin(v_event_id, p_pin) then
     raise exception 'PIN salah';
   end if;
-  update transactions
+  update transactions t
     set jenis = p_jenis, kategori = p_kategori, nominal = p_nominal,
         tanggal = p_tanggal, keterangan = p_keterangan, foto_url = p_foto_url
-    where id = p_transaction_id;
+    where t.id = p_transaction_id;
 
   return query
     select t.id, t.event_id, t.jenis, t.kategori, t.nominal, t.tanggal, t.keterangan, t.foto_url, t.created_at

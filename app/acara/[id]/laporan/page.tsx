@@ -326,21 +326,25 @@ function ReportCategoryTable({
       {rows.length === 0 ? (
         <p className="text-sm text-ink-soft">Tidak ada data.</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-ink/10">
+        <div className="overflow-x-auto rounded-lg border border-ink/10">
           <table className="w-full text-left text-sm">
             <thead className="bg-paper-dim/60 text-[11px] uppercase tracking-wide text-ink-soft">
               <tr>
-                <th className="px-3 py-2 font-semibold">Kategori</th>
-                <th className="px-3 py-2 text-center font-semibold">Jumlah Transaksi</th>
-                <th className="px-3 py-2 text-right font-semibold">Total</th>
+                <th className="whitespace-nowrap px-3 py-2 font-semibold">Kategori</th>
+                <th className="whitespace-nowrap px-3 py-2 text-center font-semibold">
+                  Jumlah Transaksi
+                </th>
+                <th className="whitespace-nowrap px-3 py-2 text-right font-semibold">Total</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.kategori} className="border-t border-ink/10">
-                  <td className="px-3 py-2">{r.kategori}</td>
-                  <td className="px-3 py-2 text-center text-ink-soft">{r.jumlah_transaksi}</td>
-                  <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">
+                  <td className="whitespace-nowrap px-3 py-2">{r.kategori}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-center text-ink-soft">
+                    {r.jumlah_transaksi}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right font-mono font-semibold tabular-nums">
                     {formatRupiah(r.total)}
                   </td>
                 </tr>

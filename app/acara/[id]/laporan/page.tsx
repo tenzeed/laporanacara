@@ -150,7 +150,7 @@ export default function LaporanPage() {
         <div className="receipt-edge mt-5 border-b-2 border-brand" />
 
         <h2 className="mb-3 mt-8 font-display text-lg font-semibold text-ink">Ringkasan</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-ink/10 p-3.5">
             <p className="text-[11px] uppercase tracking-wide text-ink-soft">Pemasukan</p>
             <p className="mt-1 font-mono text-base font-semibold tabular-nums text-brand-dark sm:text-lg">

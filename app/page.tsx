@@ -7,6 +7,7 @@ import EventCard from "@/components/EventCard";
 import EmptyState from "@/components/EmptyState";
 import CreateEventModal from "@/components/CreateEventModal";
 import CreditFooter from "@/components/CreditFooter";
+import InstallPwaButton from "@/components/InstallPwaButton";
 import { fetchEvents } from "@/lib/queries";
 import type { Event, EventStatus } from "@/lib/types";
 
@@ -46,6 +47,7 @@ export default function HomePage() {
     <main className="mx-auto min-h-screen max-w-2xl px-5 pb-28 pt-8 sm:pt-12">
       <div className="flex items-center justify-between">
         <Brand />
+        <InstallPwaButton />
       </div>
 
       <div className="mt-9 sm:mt-12">

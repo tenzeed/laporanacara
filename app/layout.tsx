@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -27,6 +28,11 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Buku Acara — LPJ Keuangan",
   description: "Pencatatan & pelaporan keuangan acara, real-time dari HP mana saja.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Buku Acara",
+  },
 };
 
 export const viewport: Viewport = {
@@ -41,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} font-body bg-paper text-ink antialiased`}
       >
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>

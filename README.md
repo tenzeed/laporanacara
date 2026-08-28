@@ -220,7 +220,30 @@ akan melihat **semua acara** dengan dua aksi di tiap barisnya:
   — karena hanya kamu yang punya akses ke dashboard Supabase project
   ini, itu sudah jadi "kunci cadangan" paling akhir.
 
-## 11. Struktur proyek
+## 11. Pasang sebagai aplikasi (PWA)
+
+Aplikasi ini sudah bisa "diinstall" ke HP/laptop seperti aplikasi asli
+(icon di homescreen, buka tanpa address bar browser):
+
+- Di Chrome/Edge Android & desktop, tombol **"Pasang App"** otomatis
+  muncul di pojok kanan atas halaman utama (sejajar dengan logo "Buku
+  Acara") begitu browser mendeteksi aplikasi ini bisa di-install. Klik
+  untuk langsung memasangnya.
+- Di iOS Safari, tombol itu tidak akan muncul (Safari tidak mendukung
+  prompt otomatis) — pengguna iPhone/iPad tetap bisa pasang manual lewat
+  tombol **Share → Add to Home Screen**, dan ikon aplikasinya akan
+  otomatis terpakai juga.
+- Ikon aplikasi (favicon, ikon PWA, apple-touch-icon) sudah disiapkan di
+  `app/icon.png`, `app/apple-icon.png`, dan `public/icons/`. Kalau suatu
+  saat mau ganti ikon, cukup timpa file-file itu dengan ukuran yang sama
+  (favicon 64×64, apple-touch-icon 180×180, PWA icon 192×192 & 512×512).
+- Ada service worker minimal (`public/sw.js`) yang **sengaja tidak
+  menyimpan cache data apa pun** — supaya ringkasan & transaksi yang
+  ditampilkan selalu versi terbaru dari server, tidak berisiko basi.
+  Service worker ini murni untuk memenuhi syarat teknis instalasi PWA
+  di beberapa browser (terutama Android Chrome).
+
+## 12. Struktur proyek
 
 ```
 app/
@@ -228,6 +251,8 @@ app/
   acara/[id]/page.tsx          Detail acara: input transaksi, ringkasan, riwayat, PIN
   acara/[id]/laporan/page.tsx  Laporan LPJ: preview, print, download PDF (selalu terbuka)
   admin/page.tsx               Panel admin: reset PIN & hapus acara (tidak ditautkan di UI)
+  icon.png, apple-icon.png     Ikon aplikasi (favicon & apple-touch-icon)
+  manifest.ts                  Manifest PWA (nama, warna, ikon home-screen)
   layout.tsx, globals.css      Layout & tema global
 components/                    Komponen UI (modal, kartu, form, dokumen PDF, PIN, toast)
 lib/                           Tipe data, koneksi Supabase, query, format, laporan, pin-storage, storage
@@ -238,7 +263,7 @@ supabase/migration_v4_edit_acara.sql      Migrasi fungsi edit detail acara (proj
 supabase/migration_v5_admin_panel.sql     Migrasi panel admin (project lama)
 ```
 
-## 12. Tahapan sesuai PRD
+## 13. Tahapan sesuai PRD
 
 - ✅ Tahap 1 — Dasar: buat acara, input transaksi, ringkasan real-time
 - ✅ Tahap 2 — Laporan: generate & download PDF, print langsung

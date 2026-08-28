@@ -18,6 +18,23 @@ body {
     transparent 1px,
     transparent 34px
   );
+  /* Matikan gestur "double-tap to zoom" — biar terasa seperti app asli,
+     bukan halaman web biasa. Tidak mematikan pinch-zoom (itu diatur lewat
+     viewport meta di layout.tsx, dan sengaja tidak berlaku di iOS Safari
+     — Apple mengunci ini demi aksesibilitas sejak iOS 10). */
+  touch-action: manipulation;
+}
+
+/* iOS Safari otomatis nge-zoom ke dalam kalau elemen form yang di-tap
+   punya font-size di bawah 16px — ini penyebab utama aplikasi "kerasa web"
+   pas isi form di HP. Paksa semua input/textarea/select minimal 16px
+   khusus di layar sempit (mobile), tanpa mengubah tampilan di desktop. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 ::selection {

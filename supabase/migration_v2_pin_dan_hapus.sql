@@ -242,8 +242,9 @@ create or replace function add_category_with_pin(
 ) returns table (id uuid, nama_kategori text, jenis text, is_default boolean, created_at timestamptz)
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
+#variable_conflict use_column
 declare
   v_id uuid;
 begin

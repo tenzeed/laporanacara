@@ -7,12 +7,12 @@ export default function CreditFooter() {
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-xs text-ink-soft/60 transition hover:text-brand"
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" strokeWidth="1.6" />
           <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.6" />
           <circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" />
         </svg>
-        Dibuat oleh <span className="font-medium">@mukhibcan</span>
+        <span className="font-medium">mukhibcan</span>
       </a>
     </footer>
   );

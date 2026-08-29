@@ -207,7 +207,7 @@ export default function AdminPage() {
           <p className="text-sm text-ink">
             PIN baru untuk <span className="font-semibold">{revealedPin.eventName}</span>:
           </p>
-          <p className="mt-1 font-mono text-2xl font-semibold tracking-[0.3em] text-brand-dark">
+          <p className="select-text-force mt-1 font-mono text-2xl font-semibold tracking-[0.3em] text-brand-dark">
             {revealedPin.pin}
           </p>
           <p className="mt-2 text-xs text-ink-soft">

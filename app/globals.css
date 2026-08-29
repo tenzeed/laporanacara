@@ -23,6 +23,34 @@ body {
      viewport meta di layout.tsx, dan sengaja tidak berlaku di iOS Safari
      — Apple mengunci ini demi aksesibilitas sejak iOS 10). */
   touch-action: manipulation;
+  /* Matikan popup "select/copy" bawaan browser saat tap-tahan teks —
+     ini yang bikin app kerasa seperti halaman web, bukan app asli.
+     Dikecualikan lagi di bawah untuk field form & teks yang memang
+     perlu bisa di-copy (mis. PIN baru di panel admin). */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Field form tetap harus bisa diketik, dipilih, dan di-copy-paste seperti biasa. */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Teks yang sengaja perlu bisa di-copy (mis. PIN baru yang ditampilkan
+   panel admin untuk disalin & disampaikan ke bendahara). Tambahkan class
+   ini kalau ada teks lain yang perlu pengecualian serupa. */
+.select-text-force {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* iOS Safari otomatis nge-zoom ke dalam kalau elemen form yang di-tap
